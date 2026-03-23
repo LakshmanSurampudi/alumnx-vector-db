@@ -1,0 +1,13 @@
+chunk_size: 500
+overlap_size: 50
+default_chunking_strategy: both
+max_paragraph_size: 500
+knn_k: 5
+default_retrieval_strategy:
+  algorithm: knn
+  distance_metric: cosine
+embedding_model: models/gemini-embedding-001
+output_dimensionality: 3072
+vector_size: 3072
+vector_store_path: ./vector_store/
+min_page_text_length: 20
