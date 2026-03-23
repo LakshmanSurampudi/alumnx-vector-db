@@ -23,8 +23,7 @@ else
 fi
 
 # Reload or Start with PM2
-pm2 describe $APP_NAME > /dev/null
-if [ $? -eq 0 ]; then
+if pm2 describe $APP_NAME > /dev/null 2>&1; then
     echo "Reloading $APP_NAME..."
     pm2 reload $APP_NAME
 else
