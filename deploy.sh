@@ -35,24 +35,22 @@ else
     ./venv/bin/pip install -r requirements.txt
 fi
 
-# Reload or Start with PM2
-if command -v uv > /dev/null; then
-    CMD="uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-else
-    ./venv/bin/pip install uvicorn  # Ensure uvicorn is in venv
-    CMD="./venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-fi
-
+# Migrate from PM2 to Docker if necessary
 if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
-    echo "Updating and Reloading $APP_NAME..."
+    echo "Stopping and deleting PM2 process $APP_NAME for Docker migration..."
     pm2 delete "$APP_NAME"
-    pm2 start "$CMD" --name "$APP_NAME"
-else
-    echo "Starting $APP_NAME for the first time..."
-    pm2 start "$CMD" --name "$APP_NAME"
+    pm2 save
 fi
 
-# Save pm2 state
-pm2 save
+# Deploy using Docker Compose
+export HOST_PORT="$PORT"
+export CONTAINER_NAME="$APP_NAME"
 
-echo "Deployment of $APP_NAME completed successfully!"
+echo "Running Docker Compose up for $APP_NAME on port $HOST_PORT..."
+docker compose up -d --build
+
+# Cleanup old images to save space
+echo "Cleaning up dangling images..."
+docker image prune -f
+
+echo "Deployment of $APP_NAME via Docker completed successfully!"

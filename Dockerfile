@@ -1,31 +1,41 @@
-FROM python:3.12-slim
+# Stage 1: Build stage
+FROM ghcr.io/astral-sh/uv:latest AS uv_setup
+FROM python:3.12-slim AS builder
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies if any (none explicitly found but good to have common ones)
+# Install uv from the official image
+COPY --from=uv_setup /uv /uvx /bin/
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy configuration and dependency files
+# Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv
+# Install dependencies into a portable directory
 RUN uv sync --frozen
 
-# Install NLTK punkt data
-RUN uv run python -m nltk.downloader punkt punkt_tab
+# Stage 2: Runtime stage
+FROM python:3.12-slim
 
-# Copy the application code
+WORKDIR /app
+
+# Copy the synced environment from the builder
+COPY --from=builder /app/.venv /app/.venv
 COPY . .
 
-# Expose the port the app runs on
+# PATH setup to use the venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install NLTK punkt data in runtime
+RUN python -m nltk.downloader punkt punkt_tab
+
+# Expose port (can be overridden by docker-compose)
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the app
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
